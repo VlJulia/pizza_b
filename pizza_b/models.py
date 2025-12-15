@@ -5,9 +5,9 @@ from django.db import models
 class Pizza(models.Model):
     name = models.TextField()
     type = models.TextField()
-    cost = models.DecimalField()
+    cost = models.DecimalField(max_digits=10, decimal_places=2)
     description = models.TextField()
-    image = models.ImageField()
+    image = models.ImageField(upload_to='pizzas/', blank=True, null=True)
     # ingredients = for the future, perhaps for searching
 
 
@@ -57,7 +57,7 @@ class Order(models.Model):
         ('delivered', 'Доставлен'),
         ('cancelled', 'Отменен'),
     ]
-    total_cost = models.DecimalField()
+    total_cost = models.DecimalField(max_digits=10, decimal_places=2)
     customer_phone = models.CharField(max_length=20)
     delivery_address = models.TextField()
     delivery_coordinates = models.CharField(max_length=40, blank=True)
@@ -80,7 +80,7 @@ class OrderItem(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE)
     pizza = models.ForeignKey(Pizza, on_delete=models.PROTECT)
     quantity = models.IntegerField(default=1)
-    price = models.DecimalField()
+     price = models.DecimalField(max_digits=10, decimal_places=2)
 
 @staticmethod
 def _validate_coordinates(coords):
@@ -103,3 +103,4 @@ def _validate_coordinates(coords):
         except ValueError as e:
             # Можно залогировать или поднять исключение
             print(f"Ошибка валидации координат '{coords}': {e}")
+

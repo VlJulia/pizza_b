@@ -152,3 +152,4 @@ class Routing:
         #         print(f"Ошибка запроса: {e}")
         #         return None
         #         return None
+
