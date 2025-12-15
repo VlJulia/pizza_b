@@ -33,7 +33,16 @@ class DriverViewSet(viewsets.ModelViewSet):
     queryset = Driver.objects.all()
     serializer_class = DriverSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
-
+    @action(detail=True, methods=['post'])
+    def update_location(self, request):
+        """Эндпоинт для обновления местоположения водителя"""
+        driver = self.get_object()
+        coordinates = request.data.get('coordinates') # Формат: "55.753676,37.619899"
+        if coordinates:
+            driver.coordinates = coordinates
+            driver.save()
+            return Response({'status': 'location updated'})
+        return Response({'error': 'coordinates required'}, status=400)
 
 class OrderViewSet(viewsets.ModelViewSet):
     queryset = Order.objects.all()
