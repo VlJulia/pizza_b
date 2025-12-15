@@ -33,7 +33,16 @@ class DriverViewSet(viewsets.ModelViewSet):
     queryset = Driver.objects.all()
     serializer_class = DriverSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
-
+    @action(detail=True, methods=['post'])
+    def update_location(self, request):
+        """Эндпоинт для обновления местоположения водителя"""
+        driver = self.get_object()
+        coordinates = request.data.get('coordinates') # Формат: "55.753676,37.619899"
+        if coordinates:
+            driver.coordinates = coordinates
+            driver.save()
+            return Response({'status': 'location updated'})
+        return Response({'error': 'coordinates required'}, status=400)
 
 class OrderViewSet(viewsets.ModelViewSet):
     queryset = Order.objects.all()
@@ -41,11 +50,13 @@ class OrderViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
     
     def perform_create(self, serializer):
-        if self.delivery_address != None: 
-            found_coordinates = Routing.CoordsFromAddr(self.delivery_address)
-        else:
-            found_coordinates = self.delivery_coordinates
+        delivery_address = self.request.data.get('delivery_address')
+        delivery_coordinates = self.request.data.get('delivery_coordinates', '')
         
+        if delivery_address and not delivery_coordinates:
+            found_coordinates = Routing.Geocode(delivery_address)
+        else:
+            found_coordinates = delivery_coordinates
         items_data = self.request.data.get('items', [])
         estimated_time = 30 
 
