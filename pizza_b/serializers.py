@@ -39,6 +39,7 @@ class OrderItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = OrderItem
         fields = ['pizza', 'pizza_name', 'quantity', 'price']
+        read_only_fields = ['price']
 
 class OrderSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True, source='orderitem_set')
@@ -56,5 +57,27 @@ class OrderSerializer(serializers.ModelSerializer):
             'created_at', 'updated_at', 'driver', 'branch', 'items', 'user_name', 'branch_address', 'driver_name',
         ]
         read_only_fields = ['id', 'created_at', 'updated_at', 'status_display']
+    def create(self, validated_data):
+        items_data = validated_data.pop('orderitem_set', [])
+        
+        total_cost = 0
+        for item_data in items_data:
+            pizza = item_data['pizza']
+            quantity = item_data.get('quantity', 1)
+            total_cost += pizza.cost * quantity
+        
+        validated_data['total_cost'] = total_cost
+        
+        order = Order.objects.create(**validated_data)
+        
+        for item_data in items_data:
+            OrderItem.objects.create(
+                order=order,
+                pizza=item_data['pizza'],
+                quantity=item_data.get('quantity', 1),
+                price=item_data['pizza'].cost
+            )
+        
+        return order
     def get_total_cost(self, obj):
         return sum(item.quantity * item.price for item in obj.orderitem_set.all())

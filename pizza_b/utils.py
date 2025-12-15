@@ -17,4 +17,11 @@ def format_coordinates(lat, lon, decimals=19):
     """
     Форматирует координаты в строку
     """
-    return f"{lat:.{decimals}f},{lon:.{decimals}f}"
+    try:
+        # Преобразуем в числа, если это строки
+        lat_num = float(lat)
+        lon_num = float(lon)
+        return f"{lat_num:.{decimals}f},{lon_num:.{decimals}f}"
+    except (ValueError, TypeError):
+        # Возвращаем пустую строку при ошибке
+        return ""

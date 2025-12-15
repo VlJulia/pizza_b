@@ -80,7 +80,7 @@ class OrderItem(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE)
     pizza = models.ForeignKey(Pizza, on_delete=models.PROTECT)
     quantity = models.IntegerField(default=1)
-     price = models.DecimalField(max_digits=10, decimal_places=2)
+    price = models.DecimalField(max_digits=10, decimal_places=2)
 
 @staticmethod
 def _validate_coordinates(coords):

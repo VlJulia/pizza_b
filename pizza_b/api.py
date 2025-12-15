@@ -28,13 +28,26 @@ class BranchViewSet(viewsets.ModelViewSet):
     queryset = Branch.objects.all()
     serializer_class = BranchSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    def perform_create(self, serializer):
+        """
+        Автоматическое геокодирование адреса филиала при создании,
+        если координаты не предоставлены.
+        """
+        address = self.request.data.get('address', '')
+        coordinates = self.request.data.get('coordinates', '')
+        if not coordinates and address:
+            coordinates = Routing.Geocode(address)
+            if not coordinates:
+                print(f"Не удалось геокодировать адрес: {address}")
+        
+        serializer.save(coordinates=coordinates)
 
 class DriverViewSet(viewsets.ModelViewSet):
     queryset = Driver.objects.all()
     serializer_class = DriverSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
     @action(detail=True, methods=['post'])
-    def update_location(self, request):
+    def update_location(self, request, pk=None):
         """Эндпоинт для обновления местоположения водителя"""
         driver = self.get_object()
         coordinates = request.data.get('coordinates') # Формат: "55.753676,37.619899"
@@ -45,6 +58,10 @@ class DriverViewSet(viewsets.ModelViewSet):
         return Response({'error': 'coordinates required'}, status=400)
 
 class OrderViewSet(viewsets.ModelViewSet):
+    """
+    Пример запроса:
+ 
+    """
     queryset = Order.objects.all()
     serializer_class = OrderSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
@@ -66,18 +83,9 @@ class OrderViewSet(viewsets.ModelViewSet):
             status='pending'
         )
         
-
-        for item_data in items_data:
-            pizza = Pizza.objects.get(id=item_data['pizza'])
-            OrderItem.objects.create(
-                order=order,
-                pizza=pizza,
-                quantity=item_data['quantity'],
-                price=pizza.cost
-            )
-        
-
+        self.assign_branch(order)
         self.assign_driver(order)
+
 
     def assign_driver(self, order):
 
@@ -89,6 +97,45 @@ class OrderViewSet(viewsets.ModelViewSet):
             order.save()
             driver.status = 'busy'
             driver.save()
+    def assign_branch(self, order):
+        """Находит ближайший филиал по времени пути.""" #TODO:  FIX
+        if not order.delivery_coordinates:
+            return None
+
+        nearest_branch = None
+        min_time = float('inf')
+
+        for branch in Branch.objects.all():
+            route_data = Routing.GetRoute(branch.coordinates, order.delivery_coordinates)
+            
+            if not route_data or 'route' not in route_data:
+                continue
+                
+            try:
+                leg = route_data['route']['legs'][0]
+                if leg.get('status') != 'OK':
+                    print('ай больно в ноге')
+                    continue
+                    
+                total_duration = sum(step.get('duration', 0) for step in leg.get('steps', []))
+                print(total_duration)
+                if total_duration < min_time:
+                    min_time = total_duration
+                    nearest_branch = branch
+                    
+            except (KeyError, IndexError):
+                continue
+
+        if nearest_branch:
+            order.branch = nearest_branch
+            order.estimated_delivery_time = (min_time // 60) + 20
+            order.save()
+        else:
+            all_branches = list(Branch.objects.all())
+            branch_index = order.id % len(all_branches) if order.id else 0
+            order.branch = all_branches[branch_index]
+            order.estimated_delivery_time = 60
+            order.save()
 
     def get_route(self, order):
         destination = order.delivery_coordinates
@@ -100,4 +147,20 @@ class OrderViewSet(viewsets.ModelViewSet):
             current_location = order.driver.coordinates
         route = Routing.GetRoute(current_location, destination)
         return route
+    @action(detail=True, methods=['get'], url_path='route-info')
+    def get_order_route(self, request, pk=None):
+        """
+        Публичный API: Получить маршрут для конкретного заказа.
+        Возвращает ПОЛНЫЙ ответ от API Яндекса.
+         """
+        order = self.get_object()
+        route_data = self.get_route(order)
+    
+        if not route_data:
+            return Response({
+               'error': f'Не удалось построить маршрут для заказа {order.id}'
+            }, status=status.HTTP_400_BAD_REQUEST)
+    
+
+        return Response(route_data)
         

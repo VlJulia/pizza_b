@@ -1,13 +1,15 @@
-apikey = '34ef38d4d8fc4d5ba29da472883852f1'
-yapikey = 'f4501883-d055-434f-af32-c819a8adf539'
+
 import requests
 import json
+import os
 from .utils import format_coordinates, parse_coordinates
 from django.conf import settings
 from django.core.cache import cache
-
+apikey = '34ef38d4d8fc4d5ba29da472883852f1'
+yapikey = os.getenv('YANDEX_API_KEY','')
 class Routing:
-    def Geocode(self, address):
+    @staticmethod
+    def Geocode(address):
         """
         Преобразует адрес в координаты, используя кэширование.
         """
@@ -33,7 +35,7 @@ class Routing:
                 pos = data['response']['GeoObjectCollection']['featureMember'][0]['GeoObject']['Point']['pos']
                 # pos возвращается в формате "долгота широта"
                 lon, lat = pos.split()
-                result = format_coordinates(lon,lat)
+                result = format_coordinates(lat,lon)
             except (KeyError, IndexError):
                 result = 'Адрес не найден или ответ имеет неожиданную структуру.'
 
@@ -44,7 +46,8 @@ class Routing:
 
         cache.set(cache_key, result, timeout=86400)
         return result
-    def GetRoute(self, start_location, end_location, mode='driving'): 
+    @staticmethod
+    def GetRoute(start_location, end_location, mode='driving'): 
         """
         Строит маршрут между двумя координатами, используя кэширование.
         mode: 'driving' (авто), 'transit' (общественный транспорт), 'walking' (пешком)[citation:4][citation:10].
@@ -61,7 +64,7 @@ class Routing:
         url = "https://api.routing.yandex.net/v2/route"
         params = {
             'apikey': api_key,
-            'waypoints': f"{start_location_lat},{start_location_lon}|{end_location_lat},{end_location_lon}",
+            'waypoints': f"{start_location_lon},{start_location_lat}|{end_location_lon},{end_location_lat}",
             'mode': mode, 
         }
 
@@ -71,12 +74,7 @@ class Routing:
             data = response.json()
 
             route = data['routes'][0]
-            result = {
-                'distance_meters': route['legs'][0]['distance']['value'],  # Расстояние в метрах
-                'duration_seconds': route['legs'][0]['duration']['value'],  # Время в секундах
-                # Можно также сохранить геометрию маршрута (polyline) для отрисовки на карте
-                'geometry': route['legs'][0]['geometry']
-            }
+            result = route
         except (requests.exceptions.RequestException, KeyError, IndexError) as e:
             result = {'error': f'Ошибка при построении маршрута: {str(e)}'}
 
