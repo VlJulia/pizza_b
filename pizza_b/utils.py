@@ -25,3 +25,49 @@ def format_coordinates(lat, lon, decimals=19):
     except (ValueError, TypeError):
         # Возвращаем пустую строку при ошибке
         return ""
+  
+def extract_route_data_from_json(api_response):
+    """ 
+    Формат ответа:
+    {
+        "features": [{
+            "properties": {
+                "summary": {
+                    "distance": 19631.1,
+                    "duration": 1885
+                }
+            },
+            "geometry": {
+                "coordinates": [[lon1, lat1], [lon2, lat2], ...]
+            }
+        }]
+    }
+    """
+    if not api_response or 'features' not in api_response:
+        return api_response
+    
+    try:
+        # Берём первый элемент из features
+        feature = api_response['features'][0]
+        
+        # Извлекаем расстояние и время
+        summary = feature['properties']['summary']
+        distance = summary.get('distance')
+        duration = summary.get('duration')
+        
+        # Извлекаем координаты
+        coordinates = feature['geometry']['coordinates']
+        formatted_coords = [
+            [coord[1],coord[0]] for coord in coordinates
+        ]
+        
+        return {
+            'distance': distance,        # расстояние в метрах
+            'duration': duration,        # время в секундах
+            'duration_minutes': duration // 60 if duration else 0,
+            'coordinates': formatted_coords,  # массив строк "широта,долгота"
+            'raw_coordinates': coordinates    # исходный массив [lon, lat]
+        }
+        
+    except (KeyError, IndexError, TypeError) as e:
+        return {'error': f'Ошибка при разборе ответа: {str(e)}'}

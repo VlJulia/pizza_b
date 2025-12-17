@@ -60,7 +60,17 @@ class DriverViewSet(viewsets.ModelViewSet):
 class OrderViewSet(viewsets.ModelViewSet):
     """
     Пример запроса:
- 
+    {
+  "user":1,
+  "delivery_address": "нижний новгород радужная 2",
+  "customer_phone":88500508,
+  "items": [
+    {
+      "pizza": 6,
+      "quantity": 9
+    }
+  ]
+}
     """
     queryset = Order.objects.all()
     serializer_class = OrderSerializer
@@ -108,17 +118,11 @@ class OrderViewSet(viewsets.ModelViewSet):
         for branch in Branch.objects.all():
             route_data = Routing.GetRoute(branch.coordinates, order.delivery_coordinates)
             
-            if not route_data or 'route' not in route_data:
+            if not route_data or 'duration' not in route_data:
                 continue
                 
             try:
-                leg = route_data['route']['legs'][0]
-                if leg.get('status') != 'OK':
-                    print('ай больно в ноге')
-                    continue
-                    
-                total_duration = sum(step.get('duration', 0) for step in leg.get('steps', []))
-                print(total_duration)
+                total_duration = route_data.get('duration')
                 if total_duration < min_time:
                     min_time = total_duration
                     nearest_branch = branch
@@ -151,7 +155,7 @@ class OrderViewSet(viewsets.ModelViewSet):
     def get_order_route(self, request, pk=None):
         """
         Публичный API: Получить маршрут для конкретного заказа.
-        Возвращает ПОЛНЫЙ ответ от API Яндекса.
+        Возвращает дистанцию, время и ломаную линию
          """
         order = self.get_object()
         route_data = self.get_route(order)
@@ -159,7 +163,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         if not route_data:
             return Response({
                'error': f'Не удалось построить маршрут для заказа {order.id}'
-            }, status=status.HTTP_400_BAD_REQUEST)
+            }, status=400)
     
 
         return Response(route_data)
