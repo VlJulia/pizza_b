@@ -15,9 +15,6 @@ class PizzaViewSet(viewsets.ModelViewSet):
     #    # Логика кастомного действия
     #    return Response({'status': 'success'})
 
-
-
-
     
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
@@ -60,9 +57,10 @@ class DriverViewSet(viewsets.ModelViewSet):
 class OrderViewSet(viewsets.ModelViewSet):
     """
     Пример запроса:
+
     {
   "user":1,
-  "delivery_address": "нижний новгород радужная 2",
+  "delivery_address": "радужная 2",
   "customer_phone":88500508,
   "items": [
     {

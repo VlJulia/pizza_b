@@ -14,10 +14,12 @@ yapikey = os.getenv('YANDEX_API_KEY','')
 class Routing:
     
     @staticmethod
-    def Geocode(address):
+    def Geocode(address, isNizhniy=True):
         """
         Преобразует адрес в координаты, используя кэширование.
         """
+        if isNizhniy:
+              address = address + 'Нижний Новгород'
         api_key = yapikey
         cache_key = f'yandex_geocode:{address}'
         result = cache.get(cache_key)
@@ -59,8 +61,6 @@ class Routing:
          Получает маршрут между двумя точками через OpenRouteService
     
           Args:
-        coords_start: tuple/list [lat, lon] или [lon, lat] начальной точки
-        coords_end: tuple/list [lat, lon] или [lon, lat] конечной точки
         profile: тип маршрута (driving-car, foot-walking, cycling-regular и т.д.)
         api_url: URL локального ORS сервера
     
