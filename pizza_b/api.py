@@ -20,7 +20,23 @@ class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
-
+    @action(detail=True, methods=['get'], url_path='previous-addresses')
+    def get_previous_addresses(self, request, pk=None):
+        """
+        Получить адреса прошлых заказов
+         """
+        user = self.get_object()
+        orders = Order.objects.all()
+        previous_addresses = [
+        {
+            'delivery_address': order.delivery_address,
+            'delivery_coordinates': order.delivery_coordinates
+        }
+        for order in orders
+    ]  
+        return Response({
+            'previous_addresses': previous_addresses
+        }, status=200)
 class BranchViewSet(viewsets.ModelViewSet):
     queryset = Branch.objects.all()
     serializer_class = BranchSerializer
@@ -77,7 +93,7 @@ class OrderViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         delivery_address = self.request.data.get('delivery_address')
         delivery_coordinates = self.request.data.get('delivery_coordinates', '')
-        
+        found_user = User.objects.get(id=self.request.data.get('user'))
         if delivery_address and not delivery_coordinates:
             found_coordinates = Routing.Geocode(delivery_address)
         else:
@@ -88,9 +104,9 @@ class OrderViewSet(viewsets.ModelViewSet):
         order = serializer.save(
             delivery_coordinates = found_coordinates,
             estimated_delivery_time=estimated_time,
-            status='pending'
-        )
-        
+            status='pending',
+            user = found_user
+        )       
         self.assign_branch(order)
         self.assign_driver(order)
 

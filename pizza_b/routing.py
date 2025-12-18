@@ -43,7 +43,7 @@ class Routing:
                 pos = data['response']['GeoObjectCollection']['featureMember'][0]['GeoObject']['Point']['pos']
                 # pos возвращается в формате "долгота широта"
                 lon, lat = pos.split()
-                result = format_coordinates(lat,lon)
+                result = format_coordinates(lat,lon,10)
             except (KeyError, IndexError):
                 result = 'Адрес не найден или ответ имеет неожиданную структуру.'
 
