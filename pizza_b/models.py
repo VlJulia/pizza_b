@@ -1,5 +1,5 @@
 from django.db import models
-
+from django.conf import settings
 # Create your models here.
 
 class Pizza(models.Model):
@@ -11,10 +11,6 @@ class Pizza(models.Model):
     # ingredients = for the future, perhaps for searching
 
 
-
-class User(models.Model):
-    phone_number = models.CharField(max_length=15, unique=True)
-    name = models.CharField(max_length=255)
 
 
 class Branch(models.Model):
@@ -35,9 +31,13 @@ class Driver(models.Model):
         ('busy', 'Занят'),
         ('offline', 'Не в сети'),
     ]
-    
-    phone_number = models.CharField(max_length=20, unique=True)
-    name = models.CharField(max_length=100)
+    account = models.OneToOneField(
+        settings.AUTH_USER_MODEL, 
+        on_delete=models.CASCADE,
+        related_name='driver_profile',
+
+
+    )
     status = models.CharField(max_length=20, choices=DRIVER_STATUS, default='offline')
     coordinates = models.CharField(max_length=40, blank=True)
     branch = models.ForeignKey('Branch', on_delete=models.SET_NULL, null=True)
@@ -65,7 +65,7 @@ class Order(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     estimated_delivery_time = models.IntegerField(null=True)  
-    user = models.ForeignKey('User', on_delete=models.SET_NULL, null=True, blank=True)    
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)    
     pizzas = models.ManyToManyField(Pizza, through='OrderItem')
     driver = models.ForeignKey('Driver', on_delete=models.SET_NULL, null=True, blank=True)
     branch = models.ForeignKey('Branch', on_delete=models.SET_NULL, null=True)

@@ -1,36 +1,98 @@
 from rest_framework import serializers
-from .models import Pizza, User, Branch, Driver, Order, OrderItem
+from rest_framework.authtoken.models import Token
+from .models import Pizza, Branch, Driver, Order, OrderItem
+
+from .models import Driver, Branch
+
+
+from django.contrib.auth import get_user_model
+User = get_user_model()
+
+
+Account = get_user_model()
+
 
 class PizzaSerializer(serializers.ModelSerializer):
     class Meta:
         model = Pizza
         fields = '__all__'
     
-    
-
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = '__all__'
+        fields = '__all__'    
+
 
 class BranchSerializer(serializers.ModelSerializer):
     class Meta:
         model = Branch
         fields = '__all__'
 
+
+
+
 class DriverSerializer(serializers.ModelSerializer):
-    branch = BranchSerializer(read_only=True)  # Можно оставить только для отображения или добавить write-поддержку
+    # account fields provided in the same payload
+    username = serializers.CharField(write_only=True)
+    password = serializers.CharField(write_only=True, min_length=4)
+    name = serializers.CharField(required=False, allow_blank=True)
+    phone_number = serializers.CharField(required=False, allow_blank=True)
+
     branch_id = serializers.PrimaryKeyRelatedField(
         queryset=Branch.objects.all(),
-        source='branch',
+        source="branch",
         write_only=True,
-        required=False
+        required=False,
+        allow_null=True,
     )
-    status_display = serializers.CharField(source='get_status_display', read_only=True)
+
+    # read-only extras
+    branch = serializers.StringRelatedField(read_only=True)
+    status_display = serializers.CharField(source="get_status_display", read_only=True)
+    token = serializers.SerializerMethodField(read_only=True)
+
     class Meta:
         model = Driver
-        fields = ['id', 'name', 'phone_number', 'status', 'coordinates', 'branch', 'branch_id', 'status_display']
+        fields = [
+            "id",
+            # account inputs
+            "username", "password", "name", "phone_number",
+            # driver fields
+            "status", "coordinates", "branch", "branch_id", "is_active",
+            # extras
+            "status_display", "token",
+        ]
+        read_only_fields = ["id", "status_display", "token", "branch"]
 
+    def get_token(self, obj):
+        token, _ = Token.objects.get_or_create(user=obj.account)
+        return token.key
+
+    def create(self, validated_data):
+        username = validated_data.pop("username")
+        password = validated_data.pop("password")
+        name = validated_data.pop("name", "")
+        phone_number = validated_data.pop("phone_number", "")
+
+        # create auth user
+        account = Account.objects.create_user(
+            username=username,
+            password=password,
+        )
+        # if your Account model has these fields, set them:
+        if hasattr(account, "name"):
+            account.name = name
+        if hasattr(account, "phone_number"):
+            account.phone_number = phone_number
+        account.save()
+
+        # create driver profile
+        driver = Driver.objects.create(account=account, **validated_data)
+
+        # ensure token exists (optional; serializer also returns it)
+        Token.objects.get_or_create(user=account)
+
+        return driver
 
 
 class OrderItemSerializer(serializers.ModelSerializer):

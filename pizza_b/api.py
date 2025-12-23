@@ -1,9 +1,12 @@
 from rest_framework import viewsets, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from .models import Pizza, User, Driver, Branch, Order, OrderItem
+from .models import Pizza,Driver, Branch, Order, OrderItem
 from .serializers import PizzaSerializer, UserSerializer, DriverSerializer, BranchSerializer, OrderItemSerializer, OrderSerializer
 from .routing import Routing
+
+from django.contrib.auth import get_user_model
+User = get_user_model()
 class PizzaViewSet(viewsets.ModelViewSet):
     queryset = Pizza.objects.all() #filters
     #permission_classes = [permissions.IsAuthenticatedOrReadOnly]

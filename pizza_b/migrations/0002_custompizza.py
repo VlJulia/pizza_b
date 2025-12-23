@@ -38,7 +38,7 @@ def create_initial_pizzas(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('pizza_b', '0003_remove_driver_current_location_branch_coordinates_and_more'),
+        ('pizza_b', '0001_initial'),
     ]
 
     operations = [
