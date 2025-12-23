@@ -25,7 +25,7 @@ class Routing:
         result = cache.get(cache_key)
         if result is not None:
             return result
-        url = "https://geocode-maps.yandex.ru/1.x/"
+        url = "https://geocode-maps.yandex.ru/v1/"
         params = {
               
             'apikey': api_key,
@@ -46,11 +46,13 @@ class Routing:
                 result = format_coordinates(lat,lon,10)
             except (KeyError, IndexError):
                 result = 'Адрес не найден или ответ имеет неожиданную структуру.'
-
+                raise ValueError("дрес не найден или ответ имеет неожиданную структуру.")
         except requests.exceptions.RequestException as e:
             result = f'Ошибка сети или API: {str(e)}'
+            raise ConnectionError()
         except json.JSONDecodeError:
             result = 'Не удалось разобрать ответ от сервера.'
+            raise ValueError('Не удалось разобрать ответ от сервера.')
 
         cache.set(cache_key, result, timeout=86400)
         return result

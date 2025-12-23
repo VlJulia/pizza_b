@@ -55,7 +55,7 @@ class BranchViewSet(viewsets.ModelViewSet):
         if not coordinates and address:
             coordinates = Routing.Geocode(address)
             if not coordinates:
-                print(f"Не удалось геокодировать адрес: {address}")
+                coordinates = '00.0,00.0'
         
         serializer.save(coordinates=coordinates)
 
