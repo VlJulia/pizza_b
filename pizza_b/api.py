@@ -4,12 +4,12 @@ from rest_framework.response import Response
 from .models import Pizza,Driver, Branch, Order, OrderItem
 from .serializers import PizzaSerializer, UserSerializer, DriverSerializer, BranchSerializer, OrderItemSerializer, OrderSerializer
 from .routing import Routing
-
+from .permissions import IsDriver, IsCustomer, IsAdminOrReadOnly
 from django.contrib.auth import get_user_model
 User = get_user_model()
 class PizzaViewSet(viewsets.ModelViewSet):
     queryset = Pizza.objects.all() #filters
-    #permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    permission_classes = [IsAdminOrReadOnly]
     serializer_class = PizzaSerializer
     #@action(detail=True, methods=['post'])
     #def custom_action(self, request, pk=None):
@@ -20,6 +20,7 @@ class PizzaViewSet(viewsets.ModelViewSet):
 
     
 class UserViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsCustomer]
     queryset = User.objects.all()
     serializer_class = UserSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
@@ -43,7 +44,7 @@ class UserViewSet(viewsets.ModelViewSet):
 class BranchViewSet(viewsets.ModelViewSet):
     queryset = Branch.objects.all()
     serializer_class = BranchSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    permission_classes = [IsAdminOrReadOnly]
     def perform_create(self, serializer):
         """
         Автоматическое геокодирование адреса филиала при создании,
@@ -59,6 +60,7 @@ class BranchViewSet(viewsets.ModelViewSet):
         serializer.save(coordinates=coordinates)
 
 class DriverViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsDriver]
     queryset = Driver.objects.all()
     serializer_class = DriverSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
@@ -91,7 +93,7 @@ class OrderViewSet(viewsets.ModelViewSet):
     """
     queryset = Order.objects.all()
     serializer_class = OrderSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    permission_classes = [permissions.IsAuthenticated]
     
     def perform_create(self, serializer):
         delivery_address = self.request.data.get('delivery_address')
