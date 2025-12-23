@@ -74,50 +74,89 @@ class DriverViewSet(viewsets.ModelViewSet):
             driver.save()
             return Response({'status': 'location updated'})
         return Response({'error': 'coordinates required'}, status=400)
-
 class OrderViewSet(viewsets.ModelViewSet):
     """
     Пример запроса:
 
     {
-  "user":1,
-  "delivery_address": "радужная 2",
-  "customer_phone":88500508,
-  "items": [
-    {
-      "pizza": 6,
-      "quantity": 9
+        "user": 1,
+        "delivery_address": "радужная 2",
+        "customer_phone": 88500508,
+        "items": [
+            {
+                "pizza": 6,
+                "quantity": 9
+            }
+        ]
     }
-  ]
-}
     """
     queryset = Order.objects.all()
     serializer_class = OrderSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny]
     
     def perform_create(self, serializer):
         delivery_address = self.request.data.get('delivery_address')
         delivery_coordinates = self.request.data.get('delivery_coordinates', '')
-        found_user = User.objects.get(id=self.request.data.get('user'))
+        
+        # Получаем или создаем пользователя
+        user_id = self.request.data.get('user')
+        
+        if user_id:
+            # Ищем существующего пользователя
+            try:
+                found_user = User.objects.get(id=user_id)
+            except User.DoesNotExist:
+                # Создаем нового пользователя с указанным ID
+                # Генерируем уникальное имя пользователя и email
+                username = f"user_{user_id}"
+                email = f"user_{user_id}@example.com"
+                
+                # Проверяем, не существует ли уже пользователь с таким username
+                if User.objects.filter(username=username).exists():
+                    username = f"user_{user_id}_{User.objects.count() + 1}"
+                
+                found_user = User.objects.create(
+                    id=user_id,
+                    username=username,
+                    email=email,
+                    first_name="Customer",
+                    last_name=f"#{user_id}"
+                )
+        else:
+            # Создаем пользователя без указания ID (автоинкремент)
+            user_count = User.objects.count() + 1
+            found_user = User.objects.create_user(
+                username=f"auto_user_{user_count}",
+                email=f"auto_user_{user_count}@example.com",
+                first_name="Auto",
+                last_name=f"Customer{user_count}"
+            )
+        
+        # Геокодирование адреса
         if delivery_address and not delivery_coordinates:
             found_coordinates = Routing.Geocode(delivery_address)
         else:
             found_coordinates = delivery_coordinates
+        
         items_data = self.request.data.get('items', [])
-        estimated_time = 30 
+        estimated_time = 30
 
+        # Создаем заказ
         order = serializer.save(
-            delivery_coordinates = found_coordinates,
+            delivery_coordinates=found_coordinates,
             estimated_delivery_time=estimated_time,
             status='pending',
-            user = found_user
-        )       
+            user=found_user
+        )
+        
+        # Назначаем филиал и водителя
         self.assign_branch(order)
         self.assign_driver(order)
-
+        
+        # Сохраняем ID созданного пользователя для отладки
+        print(f"Created/used user ID: {found_user.id} for order {order.id}")
 
     def assign_driver(self, order):
-
         free_drivers = Driver.objects.filter(status='free', is_active=True)
         if free_drivers.exists():
             driver = free_drivers.first()
@@ -126,8 +165,9 @@ class OrderViewSet(viewsets.ModelViewSet):
             order.save()
             driver.status = 'busy'
             driver.save()
+
     def assign_branch(self, order):
-        """Находит ближайший филиал по времени пути.""" #TODO:  FIX
+        """Находит ближайший филиал по времени пути."""
         if not order.delivery_coordinates:
             return None
 
@@ -162,7 +202,6 @@ class OrderViewSet(viewsets.ModelViewSet):
 
     def get_route(self, order):
         destination = order.delivery_coordinates
-        current_location = any
         # Return shop if no driver assigned
         if not getattr(order, 'driver', None):
             current_location = order.branch.coordinates
@@ -170,20 +209,19 @@ class OrderViewSet(viewsets.ModelViewSet):
             current_location = order.driver.coordinates
         route = Routing.GetRoute(current_location, destination)
         return route
+        
     @action(detail=True, methods=['get'], url_path='route-info')
     def get_order_route(self, request, pk=None):
         """
         Публичный API: Получить маршрут для конкретного заказа.
         Возвращает дистанцию, время и ломаную линию
-         """
+        """
         order = self.get_object()
         route_data = self.get_route(order)
     
         if not route_data:
             return Response({
-               'error': f'Не удалось построить маршрут для заказа {order.id}'
+                'error': f'Не удалось построить маршрут для заказа {order.id}'
             }, status=400)
     
-
         return Response(route_data)
-        
