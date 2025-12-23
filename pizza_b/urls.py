@@ -27,6 +27,7 @@ urlpatterns = [
     path('branches/', include(router_branches.urls)),
     path('drivers/', include(router_drivers.urls)),
     path('orders/', include(router_orders.urls)),
+    path("auth/", include("acc.urls")),
 ]
 
 if settings.DEBUG:

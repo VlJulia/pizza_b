@@ -1,12 +1,15 @@
 from rest_framework import viewsets, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from .models import Pizza, User, Driver, Branch, Order, OrderItem
+from .models import Pizza,Driver, Branch, Order, OrderItem
 from .serializers import PizzaSerializer, UserSerializer, DriverSerializer, BranchSerializer, OrderItemSerializer, OrderSerializer
 from .routing import Routing
+from .permissions import IsDriver, IsCustomer, IsAdminOrReadOnly
+from django.contrib.auth import get_user_model
+User = get_user_model()
 class PizzaViewSet(viewsets.ModelViewSet):
     queryset = Pizza.objects.all() #filters
-    #permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    permission_classes = [IsAdminOrReadOnly]
     serializer_class = PizzaSerializer
     #@action(detail=True, methods=['post'])
     #def custom_action(self, request, pk=None):
@@ -15,19 +18,33 @@ class PizzaViewSet(viewsets.ModelViewSet):
     #    # Логика кастомного действия
     #    return Response({'status': 'success'})
 
-
-
-
     
 class UserViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsCustomer]
     queryset = User.objects.all()
     serializer_class = UserSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
-
+    @action(detail=True, methods=['get'], url_path='previous-addresses')
+    def get_previous_addresses(self, request, pk=None):
+        """
+        Получить адреса прошлых заказов
+         """
+        user = self.get_object()
+        orders = Order.objects.all()
+        previous_addresses = [
+        {
+            'delivery_address': order.delivery_address,
+            'delivery_coordinates': order.delivery_coordinates
+        }
+        for order in orders
+    ]  
+        return Response({
+            'previous_addresses': previous_addresses
+        }, status=200)
 class BranchViewSet(viewsets.ModelViewSet):
     queryset = Branch.objects.all()
     serializer_class = BranchSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    permission_classes = [IsAdminOrReadOnly]
     def perform_create(self, serializer):
         """
         Автоматическое геокодирование адреса филиала при создании,
@@ -43,6 +60,7 @@ class BranchViewSet(viewsets.ModelViewSet):
         serializer.save(coordinates=coordinates)
 
 class DriverViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsDriver]
     queryset = Driver.objects.all()
     serializer_class = DriverSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
@@ -60,9 +78,10 @@ class DriverViewSet(viewsets.ModelViewSet):
 class OrderViewSet(viewsets.ModelViewSet):
     """
     Пример запроса:
+
     {
   "user":1,
-  "delivery_address": "нижний новгород радужная 2",
+  "delivery_address": "радужная 2",
   "customer_phone":88500508,
   "items": [
     {
@@ -74,12 +93,12 @@ class OrderViewSet(viewsets.ModelViewSet):
     """
     queryset = Order.objects.all()
     serializer_class = OrderSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    permission_classes = [permissions.IsAuthenticated]
     
     def perform_create(self, serializer):
         delivery_address = self.request.data.get('delivery_address')
         delivery_coordinates = self.request.data.get('delivery_coordinates', '')
-        
+        found_user = User.objects.get(id=self.request.data.get('user'))
         if delivery_address and not delivery_coordinates:
             found_coordinates = Routing.Geocode(delivery_address)
         else:
@@ -90,9 +109,9 @@ class OrderViewSet(viewsets.ModelViewSet):
         order = serializer.save(
             delivery_coordinates = found_coordinates,
             estimated_delivery_time=estimated_time,
-            status='pending'
-        )
-        
+            status='pending',
+            user = found_user
+        )       
         self.assign_branch(order)
         self.assign_driver(order)
 

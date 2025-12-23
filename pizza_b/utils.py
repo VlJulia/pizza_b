@@ -13,7 +13,7 @@ def parse_coordinates(coord_string):
     except (ValueError, IndexError):
         return None, None
 
-def format_coordinates(lat, lon, decimals=19):
+def format_coordinates(lat, lon, decimals=10):
     """
     Форматирует координаты в строку
     """

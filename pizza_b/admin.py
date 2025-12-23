@@ -1,7 +1,8 @@
 from django.contrib import admin
-from pizza_b.models import Pizza, User, Branch, Driver, Order
+from pizza_b.models import Pizza, Branch, Driver, Order
 # Register your models here.
-
+from django.contrib.auth import get_user_model
+User = get_user_model()
 #admin.site.register(Pizza)
 @admin.register(Pizza)
 class PizzaAdmin(admin.ModelAdmin):
@@ -24,5 +25,5 @@ class OrderAdmin(admin.ModelAdmin):
 
 @admin.register(Driver)
 class DriverAdmin(admin.ModelAdmin):
-    list_display = ('name', 'phone_number', 'status', 'branch')
+    list_display = ('account', 'status', 'branch')
     list_filter = ('status', 'branch')
