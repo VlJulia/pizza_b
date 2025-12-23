@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from rest_framework.authtoken.models import Token
 from .models import Pizza, Branch, Driver, Order, OrderItem
-
+from .routing import Routing
 from .models import Driver, Branch
 
 
@@ -16,7 +16,7 @@ class PizzaSerializer(serializers.ModelSerializer):
     class Meta:
         model = Pizza
         fields = '__all__'
-    
+
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
@@ -27,7 +27,29 @@ class BranchSerializer(serializers.ModelSerializer):
     class Meta:
         model = Branch
         fields = '__all__'
+    # def _maybe_set_coords(self, validated_data):
+    #     address = validated_data.get("address")
+    #     coords = validated_data.get("coordinates")
 
+    #     # Only geocode if we have an address and coordinates are empty/not provided
+    #     if address and (coords is None or coords == ""):
+    #         res = Routing.Geocode(address)  # should return (lat, lon)
+    #         if (res is None or res == ""):
+    #             validated_data["coordinates"] = 'SVO'
+    #         else:
+    #             validated_data["coordinates"] = res
+    #     validated_data['coordinates'] = '111.2,33.5555'
+    #     return validated_data
+
+    # def create(self, validated_data):
+        
+    #     validated_data = self._maybe_set_coords(validated_data)
+    #     return super().create(validated_data)
+
+    # def update(self, instance, validated_data):
+    #     validated_data = self._maybe_set_coords(validated_data)
+    #     return super().update(instance, validated_data)
+    
 
 
 
